@@ -1,0 +1,70 @@
+{% extends "base.html" %} {% block content %}
+<h1>Register</h1>
+<form method="POST" id="registerForm">
+    <input type="text" name="username" placeholder="Username" required>
+    <input type="email" name="email" placeholder="Email" required>
+    <input type="password" name="password" id="password" placeholder="Password" pattern="(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}" title="Must contain at least 8 characters, including letters, numbers, and special characters" required>
+    <div id="password-strength"></div>
+    <button type="submit">Register</button>
+</form>
+
+<script>
+    document.getElementById('password').addEventListener('input', function() {
+        const password = this.value;
+        const strengthDiv = document.getElementById('password-strength');
+        let strength = 0;
+        let feedback = [];
+
+        // Check length
+        if (password.length >= 8) {
+            strength += 1;
+        } else {
+            feedback.push("At least 8 characters");
+        }
+
+        // Check for letters
+        if (/[A-Za-z]/.test(password)) {
+            strength += 1;
+        } else {
+            feedback.push("Include letters");
+        }
+
+        // Check for numbers
+        if (/\d/.test(password)) {
+            strength += 1;
+        } else {
+            feedback.push("Include numbers");
+        }
+
+        // Check for special characters
+        if (/[@$!%*?&]/.test(password)) {
+            strength += 1;
+        } else {
+            feedback.push("Include special characters");
+        }
+
+        // Update strength indicator
+        let strengthText = '';
+        switch (strength) {
+            case 0:
+                strengthText = '<span style="color: red">Very Weak</span>';
+                break;
+            case 1:
+                strengthText = '<span style="color: orange">Weak</span>';
+                break;
+            case 2:
+                strengthText = '<span style="color: yellow">Medium</span>';
+                break;
+            case 3:
+                strengthText = '<span style="color: lightgreen">Strong</span>';
+                break;
+            case 4:
+                strengthText = '<span style="color: green">Very Strong</span>';
+                break;
+        }
+
+        strengthDiv.innerHTML = `Password Strength: ${strengthText}<br>
+                           ${feedback.length ? 'Requirements: ' + feedback.join(', ') : ''}`;
+    });
+</script>
+{% endblock %}

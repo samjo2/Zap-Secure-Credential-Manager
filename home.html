@@ -1,0 +1,75 @@
+{% extends "base.html" %} {% block content %}
+<h1>Welcome to Zap</h1>
+{% if 'user' in session %}
+<p>Hello, {{ session['user'] }}!</p>
+<h2>Your Credentials</h2>
+<div id="credentials"></div>
+<h2>Add New Credential</h2>
+<form id="add-credential-form">
+    <input type="text" name="service" placeholder="Service" required>
+    <input type="text" name="username" placeholder="Username" required>
+    <input type="password" name="password" id="password" placeholder="Password" required>
+    <button type="submit">Add Credential</button>
+</form>
+<button id="generate-password">Generate Secure Password</button> {% else %}
+<p>Please log in to manage your credentials.</p>
+{% endif %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const credentialsDiv = document.getElementById('credentials');
+        const addCredentialForm = document.getElementById('add-credential-form');
+        const generatePasswordBtn = document.getElementById('generate-password');
+        const passwordInput = document.getElementById('password');
+
+        // Function to fetch and display credentials
+        function fetchCredentials() {
+            fetch('/get_credentials')
+                .then(response => response.json())
+                .then(data => {
+                    credentialsDiv.innerHTML = '';
+                    for (const [service, cred] of Object.entries(data)) {
+                        credentialsDiv.innerHTML += `
+                        <div>
+                            <strong>${service}</strong>: 
+                            Username: ${cred.username}, 
+                            Password: ${'*'.repeat(cred.password.length)}
+                        </div>
+                    `;
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Fetch credentials on page load
+        fetchCredentials();
+
+        // Handle form submission
+        addCredentialForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(addCredentialForm);
+            fetch('/add_credential', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.text())
+                .then(data => {
+                    console.log(data);
+                    fetchCredentials(); // Refresh the credentials list
+                    addCredentialForm.reset(); // Clear the form
+                })
+                .catch(error => console.error('Error:', error));
+        });
+
+        // Generate password
+        generatePasswordBtn.addEventListener('click', function() {
+            fetch('/generate_password')
+                .then(response => response.json())
+                .then(data => {
+                    passwordInput.value = data.password;
+                })
+                .catch(error => console.error('Error:', error));
+        });
+    });
+</script>
+{% endblock %}
