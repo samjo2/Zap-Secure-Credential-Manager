@@ -30,15 +30,32 @@
                     credentialsDiv.innerHTML = '';
                     for (const [service, cred] of Object.entries(data)) {
                         credentialsDiv.innerHTML += `
-                        <div>
-                            <strong>${service}</strong>: 
-                            Username: ${cred.username}, 
-                            Password: ${'*'.repeat(cred.password.length)}
+                        <div class="credential">
+                            <strong>${service}</strong>:
+                            Username: ${cred.username},
+                            Password: <span class="password-mask">${'*'.repeat(cred.password.length)}</span>
+                            <span class="password-plain" style="display:none;">${cred.password}</span>
+                            <button class="toggle-password">Show</button>
                         </div>
                     `;
                     }
+                    document.querySelectorAll('.toggle-password').forEach(button => {
+                        button.addEventListener('click', function() {
+                            togglePassword(this);
+                        });
+                    });
                 })
                 .catch(error => console.error('Error:', error));
+        }
+
+        function togglePassword(button) {
+            const credentialDiv = button.closest('.credential');
+            const maskSpan = credentialDiv.querySelector('.password-mask');
+            const plainSpan = credentialDiv.querySelector('.password-plain');
+            const isHidden = maskSpan.style.display === 'none';
+            maskSpan.style.display = isHidden ? 'inline' : 'none';
+            plainSpan.style.display = isHidden ? 'none' : 'inline';
+            button.textContent = isHidden ? 'Show' : 'Hide';
         }
 
         // Fetch credentials on page load
