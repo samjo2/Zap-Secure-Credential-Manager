@@ -164,6 +164,10 @@ Zap includes a GitHub Actions workflow to automate testing and deployment:
 
 ---
 
+## 🔌 Browser Extension
+
+A Chrome extension for autofilling credentials is available in the `extension` folder. Follow the [installation guide](extension/README.md) to get started.
+
 ## 🤝 Contributing
 
 We welcome contributions! Here’s how you can get involved:
