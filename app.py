@@ -172,10 +172,14 @@ def get_credentials():
     if 'user' not in session:
         return "Unauthorized", 401
     user_credentials = credentials.get(session['user'], {})
+    decrypted_credentials = {}
     for service, cred in user_credentials.items():
-        # Decrypt the password before returning
-        cred['password'] = cipher_suite.decrypt(cred['password'].encode()).decode()
-    return jsonify(user_credentials)
+        # Decrypt the password before returning without mutating stored data
+        decrypted_credentials[service] = {
+            "username": cred["username"],
+            "password": cipher_suite.decrypt(cred["password"].encode()).decode(),
+        }
+    return jsonify(decrypted_credentials)
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
