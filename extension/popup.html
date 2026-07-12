@@ -3,12 +3,34 @@
 <head>
   <meta charset="utf-8">
   <title>Zap Autofill</title>
+  <style>
+    body {
+      font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: #0b0f14;
+      color: #e6edf3;
+      width: 260px;
+      padding: 12px;
+    }
+    button {
+      width: 100%;
+      background: #00aaff;
+      color: #04121c;
+      border: none;
+      border-radius: 6px;
+      padding: 8px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    label { display: flex; gap: 6px; margin-top: 10px; font-size: 13px; }
+    #status { margin-top: 10px; font-size: 12px; color: #8b98a5; min-height: 16px; }
+  </style>
 </head>
 <body>
-  <button id="autofill">Autofill Credentials</button>
+  <button id="autofill">Autofill credentials</button>
   <label>
-    <input type="checkbox" id="whitelist" /> Autofill automatically on this domain
+    <input type="checkbox" id="whitelist"> Autofill automatically on this site
   </label>
+  <div id="status"></div>
   <script src="popup.js"></script>
 </body>
 </html>

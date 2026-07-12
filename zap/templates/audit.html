@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Audit log - Zap{% endblock %}
+{% block content %}
+<h1>Audit log</h1>
+{% if chain_ok %}
+<p class="badge ok">Integrity verified: the hash chain over
+{{ entries|length }} entries is intact.</p>
+{% else %}
+<p class="badge bad">Integrity check FAILED: the audit history has been
+modified outside of Zap.</p>
+{% endif %}
+<table class="audit-table">
+    <thead><tr><th>When (UTC)</th><th>Event</th><th>Detail</th></tr></thead>
+    <tbody>
+    {% for entry in entries %}
+        <tr>
+            <td>{{ entry['at'][:19].replace('T', ' ') }}</td>
+            <td>{{ entry['action'].replace('_', ' ') }}</td>
+            <td>{{ entry['detail'] }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

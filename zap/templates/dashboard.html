@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Vault - Zap{% endblock %}
+{% block content %}
+<h1>Your vault</h1>
+<div class="vault-toolbar">
+    <input type="search" id="search" placeholder="Search services..." autocomplete="off">
+    <button id="show-add" class="button">Add credential</button>
+</div>
+
+<form id="credential-form" class="card hidden" autocomplete="off">
+    <h2 id="form-title">Add credential</h2>
+    <input type="hidden" id="cred-id">
+    <label>Service
+        <input type="text" id="service" maxlength="128" required>
+    </label>
+    <label>Website (for autofill matching)
+        <input type="text" id="site" maxlength="256" placeholder="example.com">
+    </label>
+    <label>Username
+        <input type="text" id="username" maxlength="256">
+    </label>
+    <label>Password
+        <div class="password-row">
+            <input type="password" id="password" maxlength="1024" required>
+            <button type="button" id="toggle-form-password" class="small">Show</button>
+            <button type="button" id="generate" class="small">Generate</button>
+        </div>
+    </label>
+    <div class="generator-options">
+        <label>Length <input type="number" id="gen-length" min="8" max="128" value="20"></label>
+        <label><input type="checkbox" id="gen-symbols" checked> Symbols</label>
+    </div>
+    <label>Notes
+        <textarea id="notes" maxlength="4096" rows="2"></textarea>
+    </label>
+    <div class="form-actions">
+        <button type="submit" class="button">Save</button>
+        <button type="button" id="cancel-form" class="button secondary">Cancel</button>
+    </div>
+</form>
+
+<p id="empty-state" class="hidden">No credentials yet. Add your first one above.</p>
+<div id="credentials"></div>
+<script src="{{ url_for('static', filename='js/vault.js') }}"></script>
+{% endblock %}

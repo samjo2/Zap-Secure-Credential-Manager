@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Register - Zap{% endblock %}
+{% block content %}
+<h1>Create your vault</h1>
+<form method="post" class="card narrow">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Username
+        <input type="text" name="username" autocomplete="username"
+               pattern="[A-Za-z0-9_.\-]{3,32}"
+               title="3-32 characters: letters, digits, . _ -" required>
+    </label>
+    <label>Email
+        <input type="email" name="email" autocomplete="email" required>
+    </label>
+    <label>Master password
+        <input type="password" name="password" id="password"
+               autocomplete="new-password" minlength="12" required>
+    </label>
+    <div id="strength" aria-live="polite"></div>
+    <label>Confirm master password
+        <input type="password" name="confirm_password" autocomplete="new-password" required>
+    </label>
+    <p class="warn">Your master password encrypts everything and is never
+    stored. If you forget it, your credentials cannot be recovered.</p>
+    <button type="submit" class="button">Create vault</button>
+</form>
+<script src="{{ url_for('static', filename='js/strength.js') }}"></script>
+{% endblock %}

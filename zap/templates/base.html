@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>{% block title %}Zap - Secure Credential Manager{% endblock %}</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<nav>
+    <a class="brand" href="{{ url_for('vault.home') }}">Zap <span class="bolt">&#9889;</span></a>
+    <div class="nav-links">
+    {% if session.get('user_id') %}
+        <a href="{{ url_for('vault.dashboard') }}">Vault</a>
+        <a href="{{ url_for('vault.audit_page') }}">Audit</a>
+        <a href="{{ url_for('auth.account') }}">Account</a>
+        <form method="post" action="{{ url_for('auth.logout') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="link-button">Lock &amp; log out</button>
+        </form>
+    {% else %}
+        <a href="{{ url_for('auth.login') }}">Log in</a>
+        <a href="{{ url_for('auth.register') }}">Register</a>
+    {% endif %}
+    </div>
+</nav>
+<main>
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <ul class="flash">
+            {% for message in messages %}<li>{{ message }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+</main>
+<footer>
+    <p>Your secrets are encrypted with a key only your master password can unlock.</p>
+</footer>
+</body>
+</html>

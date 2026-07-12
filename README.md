@@ -1,196 +1,173 @@
-# Zap ⚡ - Secure Credential Manager
+# Zap - Secure Credential Manager
 
-Zap is a state-of-the-art secure credential manager designed to help you manage your credentials with confidence. Leveraging blockchain technology and AES encryption, Zap ensures the safety of your sensitive data while providing a user-friendly interface. Whether you need to generate strong passwords, securely store your credentials, or retrieve them when needed, Zap has got you covered.
+[![CI](https://github.com/samjo2/Zap-Secure-Credential-Manager/actions/workflows/ci.yml/badge.svg)](https://github.com/samjo2/Zap-Secure-Credential-Manager/actions/workflows/ci.yml)
 
----
+Zap is a self-hosted credential manager built on one rule: **nothing stored on
+disk can decrypt your vault without your master password.** There is no global
+encryption key, and the server never persists key material that could open
+your data.
 
-## 🌟 Features
+![Zap demo](docs/demo.gif)
 
-### 🔒 Blockchain Integration
-- Credentials are hashed using Ethereum’s Keccak256 algorithm and securely stored on the Ethereum blockchain.
-- Immutability ensures your data is tamper-proof and transparent.
+## How the encryption works
 
-### 🔐 AES Encryption
-- Data is encrypted at rest using AES-256 to ensure robust security.
-- Decryption occurs locally, ensuring your data remains private.
+Each user gets a random 256-bit data-encryption key (DEK) that encrypts their
+credentials with AES-256-GCM. The DEK itself is stored only in wrapped form,
+sealed under a key-encryption key (KEK) derived from the user's master
+password with scrypt:
 
-### 👨‍💻 User-Friendly Interface
-- Intuitive blue-and-black-themed design to make navigation easy and visually appealing.
-- Responsive design ensures seamless use on all devices.
-
-### 💪 Password Strength Indicator
-- Real-time feedback on password strength while creating or updating credentials.
-- Ensures passwords meet strong security standards.
-
-### 🔑 Password Recovery
-- Simple and secure password reset functionality.
-- Forgot your password? Reset it with just a few clicks!
-
-### 📊 Real-Time Insights
-- Gain insights into credential usage and activity with a Kibana-style dashboard (upcoming feature).
-
----
-
-## 🚀 Getting Started
-
-Follow these steps to set up and run Zap on your local machine.
-
-### Prerequisites
-- Python 3.7+
-- Node.js (for additional frontend features)
-- MetaMask wallet (for Ethereum blockchain interaction)
-
-### Installation
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/Zap-Secure-Credential-Manager.git
-   cd Zap-Secure-Credential-Manager
-   ```
-
-2. Set up a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. Configure the `.env` file:
-   - Create a `.env` file in the project root.
-   - Add the following variables:
-     ```env
-     FLASK_APP=app.py
-     FLASK_ENV=development
-     SECRET_KEY=your_secret_key
-     INFURA_PROJECT_ID=your_infura_project_id
-     CONTRACT_ADDRESS=your_contract_address
-     PRIVATE_KEY=your_private_key
-     ```
-
-5. Start the Flask application:
-   ```bash
-   python app.py
-   ```
-
-6. Access the app in your browser:
-   - Navigate to `http://127.0.0.1:5000`.
-
----
-
-## 🔧 Technologies Used
-
-| Technology         | Purpose                                   |
-|--------------------|-------------------------------------------|
-| Flask              | Backend framework                        |
-| Web3.py            | Ethereum blockchain interaction          |
-| Cryptography       | AES encryption                           |
-| HTML/CSS           | Frontend design                          |
-| MetaMask           | Wallet for blockchain transactions       |
-| PostgreSQL         | Database for storing user credentials    |
-
----
-
-## 📂 Project Structure
-
-```plaintext
-Zap-Secure-Credential-Manager/
-├── app.py                  # Main Flask application
-├── templates/              # HTML templates
-│   ├── base.html           # Base layout
-│   ├── login.html          # Login page
-│   ├── register.html       # Registration page
-│   ├── home.html           # Dashboard
-│   ├── forgot_password.html# Password reset page
-├── static/                 # Static files (CSS, JS, images)
-│   ├── style.css           # Stylesheet
-├── generate_hash.py        # Script for generating hashes
-├── CredentialHashes.sol    # Ethereum smart contract
-├── requirements.txt        # Python dependencies
-└── README.md               # Project documentation
+```mermaid
+flowchart LR
+    MP["Master password<br>(never stored)"] -- "scrypt<br>per-user salt" --> KEK["KEK<br>(never stored)"]
+    RNG["CSPRNG"] --> DEK["DEK<br>(memory only)"]
+    DEK -- "AES-256-GCM under KEK" --> WDEK[("Wrapped DEK<br>stored")]
+    CRED["Credential JSON"] -- "AES-256-GCM under DEK" --> CT[("Ciphertext<br>stored")]
 ```
 
----
+At login the KEK is derived, the DEK unwrapped, and the DEK held **only in
+server memory**, tied to your session and discarded after 15 minutes of
+inactivity or any restart. Losing the master password means losing the vault;
+that is the point.
 
-## 🛠️ Deployment
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant S as Zap server
+    participant M as Session vault (memory)
+    participant D as SQLite (ciphertext only)
+    B->>S: login(master password)
+    S->>D: fetch salt + wrapped DEK
+    S->>S: KEK = scrypt(password, salt)
+    S->>S: DEK = unwrap(wrapped DEK)
+    S->>M: hold DEK behind random token
+    B->>S: reveal credential
+    S->>M: DEK still unlocked?
+    S->>D: fetch ciphertext
+    S-->>B: decrypted just-in-time
+    Note over M: idle timeout or restart discards DEK - vault relocks
+```
 
-### Deploying Locally
-1. Ensure all dependencies are installed.
-2. Start the application as described in the [Getting Started](#getting-started) section.
+Each ciphertext is bound to its owner and row (AES-GCM associated data), so
+moving an encrypted blob to another user or credential fails to decrypt.
 
-### Automating Deployment with GitHub Actions
-Zap includes a GitHub Actions workflow to automate testing and deployment:
+## Features
 
-1. Create a `.github/workflows/deploy.yml` file:
-   ```yaml
-   name: Deploy to Heroku
+- **Per-user envelope encryption** - AES-256-GCM under a scrypt-derived key;
+  usernames, passwords, and notes are all ciphertext at rest.
+- **Auto-locking vault** - the unwrapped key lives in memory with a sliding
+  idle timeout; walking away or restarting the server relocks everything.
+- **Tamper-evident audit log** - every account event is chained with keyed
+  HMAC-SHA256 hashes. Editing or deleting history breaks the chain, and the
+  audit page shows it.
+- **Hardened auth** - scrypt password hashing, login throttling that locks an
+  attacker's IP without letting them lock *you* out, uniform error messages,
+  timing-leveled username lookup, session fixation defense.
+- **Real password reset** - expiring single-use emailed tokens. Resetting
+  without the old password erases the vault (it is mathematically
+  unrecoverable) and says so up front; changing your password *with* the old
+  one re-wraps the key and keeps everything.
+- **CSRF protection everywhere**, strict Content-Security-Policy, no inline
+  scripts, security headers on every response.
+- **Password generator** with length/symbol options, strength feedback while
+  you type.
+- **Browser extension** - autofills the single best-matching credential for
+  the current domain; it can never download the whole vault.
 
-   on:
-     push:
-       branches:
-         - main
+## Screenshots
 
-   jobs:
-     deploy:
-       runs-on: ubuntu-latest
+| Vault | Audit log |
+|---|---|
+| ![Vault](docs/vault.png) | ![Audit](docs/audit.png) |
 
-       steps:
-         - name: Checkout code
-           uses: actions/checkout@v3
+## Getting started
 
-         - name: Set up Python
-           uses: actions/setup-python@v4
-           with:
-             python-version: '3.9'
+Requires Python 3.10+.
 
-         - name: Install dependencies
-           run: |
-             python -m pip install --upgrade pip
-             pip install -r requirements.txt
+```bash
+git clone https://github.com/samjo2/Zap-Secure-Credential-Manager.git
+cd Zap-Secure-Credential-Manager
+python3 -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+python app.py
+```
 
-         - name: Deploy to Heroku
-           env:
-             HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
-           run: |
-             heroku create zap-app
-             git push heroku main
-   ```
+Open http://127.0.0.1:5000, register, and start adding credentials. The
+SQLite database and a persisted secret key are created under `instance/`
+(both are gitignored and chmod 600).
 
-2. Add your Heroku API key to GitHub Secrets.
+### Configuration (all optional)
 
-3. Push changes to the `main` branch, and GitHub Actions will handle the deployment.
+| Variable | Default | Purpose |
+|---|---|---|
+| `ZAP_SECRET_KEY` | auto-generated, persisted in `instance/` | Session signing + audit HMAC key |
+| `ZAP_DB_PATH` | `instance/zap.db` | SQLite database location |
+| `ZAP_VAULT_TIMEOUT_MINUTES` | `15` | Idle minutes before the vault relocks |
+| `ZAP_HTTPS` | unset | Set to `1` behind TLS to mark cookies Secure |
+| `ZAP_DEBUG` | unset | Set to `1` for the Flask debugger (never in production) |
+| `ZAP_SMTP_HOST/PORT/USERNAME/PASSWORD/SENDER` | unset | Send reset emails; otherwise reset links are logged to the console |
 
----
+See `.env.example`. Run with a single process (the in-memory session vault is
+process-local): `python app.py` or `gunicorn -w 1 'zap:create_app()'`.
 
-## 🔌 Browser Extension
+## Running the tests
 
-A Chrome extension for autofilling credentials is available in the `extension` folder. Follow the [installation guide](extension/README.md) to get started.
+```bash
+pip install -r requirements-dev.txt
+python -m pytest
+```
 
-## 🤝 Contributing
+The suite includes dispositive security checks: it reads the raw SQLite file
+to prove secrets and master passwords are ciphertext at rest, tampers with
+audit rows to prove the hash chain catches it, and verifies one user gets 404s
+on another's credentials.
 
-We welcome contributions! Here’s how you can get involved:
+## Where the blockchain went
 
-1. Fork the repository.
-2. Create a new branch for your feature/bug fix.
-3. Commit your changes and push them to your branch.
-4. Open a pull request with a detailed description of your changes.
+The original version hashed `service:username:password` with keccak256 and
+published it to an Ethereum testnet. That was a security hole, not a feature:
+a public, offline-crackable digest of every stored password (and the testnet,
+Rinkeby, has since shut down). The goal it aimed at - tamper-evident history -
+is now served by the local HMAC hash chain on the audit page, which publishes
+nothing. If external anchoring is ever wanted, the safe design is to
+periodically anchor the chain *head* (a single keyed hash) somewhere public;
+per-credential data must never leave the machine.
 
----
+## Project structure
 
-## 📜 License
+```
+Zap-Secure-Credential-Manager/
+├── app.py                # Entry point
+├── zap/
+│   ├── __init__.py       # App factory, config, security headers
+│   ├── auth.py           # Register, login, throttling, change/reset password
+│   ├── vault.py          # Credential CRUD, autofill + generator APIs
+│   ├── security.py       # KDF, DEK wrap/unwrap, session vault, CSRF
+│   ├── audit.py          # HMAC hash-chain audit log
+│   ├── throttle.py       # Login rate limiting
+│   ├── mailer.py         # Reset emails (optional SMTP)
+│   ├── db.py / schema.sql
+│   ├── templates/ static/
+├── extension/            # Chrome autofill extension (see its README)
+├── tests/                # pytest suite
+└── SECURITY.md           # Threat model and crypto details
+```
 
-Zap is licensed under the MIT License. See `LICENSE` for details.
+## Threat model, in one paragraph
 
----
+Zap protects your credentials against theft of the database file, a server
+snapshot, or backups: an attacker gets only ciphertext and scrypt-cost salted
+verifiers. It does **not** protect against an attacker with live root access
+to a running server while you are logged in (they could read process memory),
+nor against malware on your own browser. Full details, including why the
+server sees plaintext transiently and what a zero-knowledge client-side
+upgrade would look like, are in [SECURITY.md](SECURITY.md).
 
-## 📞 Contact
+## License
 
-If you have any questions or feedback, please reach out at:
-- Email: <a href="mailto:samsonjoh73@gmail.com">Send me an email</a>
-- GitHub Issues: [Zap Issues](https://github.com/samjo2/Zap-Secure-Credential-Manager/issues)
+MIT - see [LICENSE](LICENSE).
 
----
+## Contact
 
-Enjoy using **Zap ⚡** - your secure credential management solution!
+- Email: samsonjoh73@gmail.com
+- Issues: https://github.com/samjo2/Zap-Secure-Credential-Manager/issues

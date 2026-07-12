@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Zap Credential Autofill",
-  "version": "1.0",
-  "description": "Autofill login forms using credentials stored in Zap.",
-  "permissions": ["storage", "activeTab", "scripting"],
-  "host_permissions": ["http://localhost:5000/*"],
+  "version": "2.0.0",
+  "description": "Autofill login forms using credentials stored in your local Zap vault.",
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": ["http://localhost:5000/*", "http://127.0.0.1:5000/*"],
   "background": {
     "service_worker": "background.js"
   },

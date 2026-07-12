@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+    <h1>Zap <span class="bolt">&#9889;</span></h1>
+    <p class="tagline">A credential manager that cannot read your secrets.</p>
+    <div class="hero-actions">
+        <a class="button" href="{{ url_for('auth.register') }}">Create a vault</a>
+        <a class="button secondary" href="{{ url_for('auth.login') }}">Unlock your vault</a>
+    </div>
+</section>
+<section class="features">
+    <div class="feature">
+        <h3>Per-user encryption</h3>
+        <p>Every credential is sealed with AES-256-GCM under a key derived from
+        your master password. Nothing stored on disk can decrypt your vault
+        without it.</p>
+    </div>
+    <div class="feature">
+        <h3>Auto-locking sessions</h3>
+        <p>Your vault key lives only in memory and is discarded after
+        inactivity or restart. Walk away and Zap locks itself.</p>
+    </div>
+    <div class="feature">
+        <h3>Tamper-evident history</h3>
+        <p>Every account event is chained into a keyed hash log. Any edit or
+        deletion of history breaks the chain and shows up on your audit page.</p>
+    </div>
+    <div class="feature">
+        <h3>Strong by default</h3>
+        <p>Built-in password generator, strength feedback, login throttling,
+        and CSRF protection on every action.</p>
+    </div>
+</section>
+{% endblock %}

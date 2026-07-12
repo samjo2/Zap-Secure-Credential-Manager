@@ -1,12 +1,15 @@
+const ZAP_ORIGIN = 'http://localhost:5000';
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'getCredentials') {
-    fetch('http://localhost:5000/get_credentials', { credentials: 'include' })
-      .then(response => response.json())
-      .then(data => {
-        const creds = data[message.domain];
-        sendResponse(creds || {});
-      })
-      .catch(() => sendResponse({}));
-    return true; // Keep the message channel open for async response
-  }
+  if (message.type !== 'getCredentials') return;
+  const url = `${ZAP_ORIGIN}/api/fill?domain=${encodeURIComponent(message.domain)}`;
+  fetch(url, { credentials: 'include' })
+    .then((resp) => {
+      if (resp.status === 401) return { error: 'locked' };
+      if (!resp.ok) return null;
+      return resp.json();
+    })
+    .then((data) => sendResponse(data))
+    .catch(() => sendResponse(null));
+  return true; // async sendResponse
 });
